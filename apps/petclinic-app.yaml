@@ -8,6 +8,8 @@ kind: Application
 metadata:
   name: petclinic
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "15"  # Platform 컴포넌트 후에 배포
   labels:
     app.kubernetes.io/part-of: applications
     app.kubernetes.io/managed-by: argocd
