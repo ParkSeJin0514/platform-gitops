@@ -1,17 +1,6 @@
 # ============================================================================
 # platform-gitops/platform/karpenter-config/templates/ec2nodeclass.yaml
 # ============================================================================
-# EC2NodeClass: Karpenter가 프로비저닝하는 EC2 인스턴스의 AWS 설정
-#
-# 정의 내용:
-#   - AMI 선택 (Amazon Linux 2023)
-#   - Subnet/Security Group 선택 (태그 기반)
-#   - IAM Role (EKS 노드 권한)
-#   - 블록 디바이스 (EBS 볼륨)
-#   - 메타데이터 설정 (IMDSv2)
-#
-# 참고: https://karpenter.sh/docs/concepts/nodeclasses/
-# ============================================================================
 apiVersion: karpenter.k8s.aws/v1
 kind: EC2NodeClass
 metadata:
@@ -19,65 +8,42 @@ metadata:
   annotations:
     kubernetes.io/description: "Default EC2NodeClass for general workloads"
 spec:
-  # ==========================================================================
-  # AMI 선택
-  # ==========================================================================
-  # AL2023: Amazon Linux 2023 EKS 최적화 AMI
-  # 자동으로 클러스터 버전에 맞는 최신 AMI 선택
+  # AMI 선택 - AL2023 EKS 최적화
   amiSelectorTerms:
     - alias: al2023@latest
 
-  # ==========================================================================
-  # IAM Role
-  # ==========================================================================
-  # Terraform에서 생성한 Karpenter Node Role
-  # modules/compute/karpenter.tf의 aws_iam_role.karpenter_node
+  # IAM Role (Terraform에서 생성)
   role: {{ .Values.ec2NodeClass.roleName }}
 
-  # ==========================================================================
   # Subnet 선택 (태그 기반)
-  # ==========================================================================
-  # Terraform에서 Private EKS Subnet에 태그 추가:
-  # karpenter.sh/discovery: petclinic-kr-eks
   subnetSelectorTerms:
     - tags:
         karpenter.sh/discovery: {{ .Values.clusterName }}
 
-  # ==========================================================================
   # Security Group 선택 (태그 기반)
-  # ==========================================================================
-  # Terraform에서 EKS 클러스터 SG에 태그 추가:
-  # karpenter.sh/discovery: petclinic-kr-eks
   securityGroupSelectorTerms:
     - tags:
         karpenter.sh/discovery: {{ .Values.clusterName }}
 
-  # ==========================================================================
   # 블록 디바이스 설정
-  # ==========================================================================
   blockDeviceMappings:
     - deviceName: /dev/xvda
       ebs:
-        volumeSize: {{ .Values.ec2NodeClass.blockDeviceMappings.0.ebs.volumeSize }}
-        volumeType: {{ .Values.ec2NodeClass.blockDeviceMappings.0.ebs.volumeType }}
-        iops: {{ .Values.ec2NodeClass.blockDeviceMappings.0.ebs.iops }}
-        throughput: {{ .Values.ec2NodeClass.blockDeviceMappings.0.ebs.throughput }}
-        encrypted: {{ .Values.ec2NodeClass.blockDeviceMappings.0.ebs.encrypted }}
-        deleteOnTermination: {{ .Values.ec2NodeClass.blockDeviceMappings.0.ebs.deleteOnTermination }}
+        volumeSize: {{ .Values.ec2NodeClass.ebs.volumeSize }}
+        volumeType: {{ .Values.ec2NodeClass.ebs.volumeType }}
+        iops: {{ .Values.ec2NodeClass.ebs.iops }}
+        throughput: {{ .Values.ec2NodeClass.ebs.throughput }}
+        encrypted: {{ .Values.ec2NodeClass.ebs.encrypted }}
+        deleteOnTermination: {{ .Values.ec2NodeClass.ebs.deleteOnTermination }}
 
-  # ==========================================================================
-  # Instance Metadata (IMDS) 설정
-  # ==========================================================================
-  # IMDSv2 필수: SSRF 공격 방지
+  # IMDS 설정 (IMDSv2 필수)
   metadataOptions:
     httpEndpoint: enabled
     httpProtocolIPv6: disabled
-    httpPutResponseHopLimit: 2  # Pod 내 컨테이너에서도 접근 가능
-    httpTokens: required        # IMDSv2 강제
+    httpPutResponseHopLimit: 2
+    httpTokens: required
 
-  # ==========================================================================
   # 태그
-  # ==========================================================================
   tags:
     Name: "{{ .Values.clusterName }}-karpenter-node"
     Project: "petclinic-kr"
