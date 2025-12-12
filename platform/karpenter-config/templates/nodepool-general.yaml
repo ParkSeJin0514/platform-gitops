@@ -1,0 +1,138 @@
+# ============================================================================
+# platform-gitops/platform/karpenter-config/templates/nodepool-general.yaml
+# ============================================================================
+# NodePool: Karpenter가 노드를 프로비저닝하는 규칙 정의
+#
+# 핵심 설정:
+#   - 인스턴스 타입: t3 시리즈 (medium ~ 2xlarge)
+#   - 용량 타입: Spot 우선, ON_DEMAND fallback
+#   - 아키텍처: amd64
+#   - 리소스 제한: CPU 100개, Memory 200Gi
+#
+# 참고: https://karpenter.sh/docs/concepts/nodepools/
+# ============================================================================
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: general
+  annotations:
+    kubernetes.io/description: "General purpose NodePool for application workloads"
+spec:
+  # ==========================================================================
+  # 노드 템플릿
+  # ==========================================================================
+  template:
+    metadata:
+      # 노드에 적용될 레이블
+      labels:
+        node-role: workload
+        managed-by: karpenter
+    spec:
+      # EC2NodeClass 참조
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: default
+
+      # ========================================================================
+      # 인스턴스 요구사항
+      # ========================================================================
+      requirements:
+        # --------------------------------------------------------------------
+        # 아키텍처: amd64 (x86_64)
+        # --------------------------------------------------------------------
+        - key: kubernetes.io/arch
+          operator: In
+          values:
+            - amd64
+
+        # --------------------------------------------------------------------
+        # OS: Linux
+        # --------------------------------------------------------------------
+        - key: kubernetes.io/os
+          operator: In
+          values:
+            - linux
+
+        # --------------------------------------------------------------------
+        # 용량 타입: Spot 우선, ON_DEMAND fallback
+        # --------------------------------------------------------------------
+        # Karpenter는 Spot을 먼저 시도하고, 불가능하면 ON_DEMAND 사용
+        # Spot 중단 시 자동으로 새 노드 프로비저닝
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values:
+            - spot
+            - on-demand
+
+        # --------------------------------------------------------------------
+        # 인스턴스 카테고리: t (버스터블)
+        # --------------------------------------------------------------------
+        # t3 시리즈만 사용 (비용 효율적)
+        - key: karpenter.k8s.aws/instance-category
+          operator: In
+          values:
+            - t
+
+        # --------------------------------------------------------------------
+        # 인스턴스 세대: 3 이상
+        # --------------------------------------------------------------------
+        - key: karpenter.k8s.aws/instance-generation
+          operator: Gt
+          values:
+            - "2"
+
+        # --------------------------------------------------------------------
+        # 인스턴스 크기 제한
+        # --------------------------------------------------------------------
+        # t3.medium ~ t3.2xlarge
+        # micro, small 제외 (리소스 부족)
+        # 4xlarge 이상 제외 (비용 과다)
+        - key: karpenter.k8s.aws/instance-size
+          operator: In
+          values:
+            - medium    # 2 vCPU, 4 GB
+            - large     # 2 vCPU, 8 GB
+            - xlarge    # 4 vCPU, 16 GB
+            - 2xlarge   # 8 vCPU, 32 GB
+
+      # ========================================================================
+      # 노드 만료 설정 (선택적)
+      # ========================================================================
+      # 주기적으로 노드를 교체하여 AMI 업데이트 등 적용
+      # 운영 환경에서는 720h (30일) 권장
+      # expireAfter: 720h
+
+  # ==========================================================================
+  # 리소스 제한
+  # ==========================================================================
+  # 이 NodePool에서 프로비저닝할 수 있는 최대 리소스
+  limits:
+    cpu: {{ .Values.nodePool.general.limits.cpu | quote }}
+    memory: {{ .Values.nodePool.general.limits.memory | quote }}
+
+  # ==========================================================================
+  # Disruption (노드 통합/교체) 설정
+  # ==========================================================================
+  disruption:
+    # 통합 정책
+    # - WhenEmpty: 노드가 비어있을 때만 종료
+    # - WhenEmptyOrUnderutilized: 비어있거나 사용률 낮을 때 종료 (권장)
+    consolidationPolicy: {{ .Values.nodePool.general.disruption.consolidationPolicy }}
+    
+    # 통합 대기 시간
+    # 노드가 빈 상태로 이 시간이 지나면 종료
+    consolidateAfter: {{ .Values.nodePool.general.disruption.consolidateAfter }}
+
+    # 예산: 동시에 중단될 수 있는 노드 비율/수
+    # 서비스 가용성 보장을 위해 제한
+    budgets:
+      {{- range .Values.nodePool.general.disruption.budgets }}
+      - nodes: {{ .nodes | quote }}
+      {{- end }}
+
+  # ==========================================================================
+  # 가중치 (다중 NodePool 사용 시)
+  # ==========================================================================
+  # 높은 값일수록 우선 사용
+  weight: 100

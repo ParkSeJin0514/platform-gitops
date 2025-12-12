@@ -1,0 +1,14 @@
+# ============================================================================
+# platform-gitops/platform/efs-csi-driver/Chart.yaml
+# ============================================================================
+apiVersion: v2
+name: efs-csi-driver
+description: AWS EFS CSI Driver for EKS
+type: application
+version: 1.0.0
+appVersion: "2.0.0"
+
+dependencies:
+  - name: aws-efs-csi-driver
+    version: "3.0.8"
+    repository: "https://kubernetes-sigs.github.io/aws-efs-csi-driver/"

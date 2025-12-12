@@ -1,0 +1,14 @@
+# ============================================================================
+# platform-gitops/platform/external-secrets/Chart.yaml
+# ============================================================================
+apiVersion: v2
+name: external-secrets
+description: External Secrets Operator with ClusterSecretStore
+type: application
+version: 1.0.0
+appVersion: "0.10.7"
+
+dependencies:
+  - name: external-secrets
+    version: "0.10.7"
+    repository: "https://charts.external-secrets.io"

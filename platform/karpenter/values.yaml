@@ -1,0 +1,101 @@
+# ============================================================================
+# platform-gitops/platform/karpenter/values.yaml
+# ============================================================================
+# Karpenter Controller 설정
+#
+# 핵심 설정:
+#   - IRSA: AWS API 접근을 위한 IAM Role
+#   - Cluster Settings: EKS 클러스터 정보
+#   - Interruption Queue: Spot 중단 알림 처리
+#
+# 참고: https://karpenter.sh/docs/reference/settings/
+# ============================================================================
+
+karpenter:
+  # ==========================================================================
+  # Service Account (IRSA)
+  # ==========================================================================
+  serviceAccount:
+    name: karpenter
+    annotations:
+      # Terraform에서 생성한 Karpenter Controller Role ARN
+      # modules/compute/karpenter.tf에서 생성됨
+      eks.amazonaws.com/role-arn: "arn:aws:iam::946775837287:role/petclinic-kr-karpenter-controller"
+
+  # ==========================================================================
+  # Controller 설정
+  # ==========================================================================
+  # 고가용성을 위해 2개 레플리카 실행
+  replicas: 2
+
+  # 리소스 제한
+  controller:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 1
+        memory: 1Gi
+
+  # ==========================================================================
+  # Karpenter Settings
+  # ==========================================================================
+  settings:
+    # EKS 클러스터 이름
+    clusterName: "petclinic-kr-eks"
+    
+    # Spot 중단 알림용 SQS Queue
+    # Terraform에서 생성됨: modules/compute/karpenter.tf
+    interruptionQueue: "petclinic-kr-karpenter-interruption"
+    
+    # 기능 게이트 (선택적)
+    featureGates:
+      # Drift: AMI/설정 변경 시 노드 자동 교체
+      drift: true
+      # SpotToSpotConsolidation: Spot 노드 통합 최적화
+      spotToSpotConsolidation: true
+
+  # ==========================================================================
+  # Pod 배치 설정
+  # ==========================================================================
+  # Karpenter Controller는 Managed Node Group(시스템 노드)에서 실행
+  # Karpenter가 프로비저닝하는 노드에서 실행되면 안됨 (순환 의존성)
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              # Karpenter가 프로비저닝하지 않은 노드에서만 실행
+              - key: karpenter.sh/nodepool
+                operator: DoesNotExist
+    podAntiAffinity:
+      # 2개 레플리카가 서로 다른 노드에 배치되도록
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: karpenter
+            topologyKey: kubernetes.io/hostname
+
+  # 시스템 노드에 Taint가 있을 경우를 위한 Toleration
+  tolerations:
+    - key: CriticalAddonsOnly
+      operator: Exists
+    - key: node-role.kubernetes.io/control-plane
+      operator: Exists
+      effect: NoSchedule
+
+  # ==========================================================================
+  # 로깅 설정
+  # ==========================================================================
+  logLevel: info
+  # debug, info, error
+
+  # ==========================================================================
+  # Webhook 설정
+  # ==========================================================================
+  webhook:
+    enabled: true
+    port: 8443

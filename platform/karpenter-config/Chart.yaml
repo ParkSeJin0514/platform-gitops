@@ -1,0 +1,15 @@
+# ============================================================================
+# platform-gitops/platform/karpenter-config/Chart.yaml
+# ============================================================================
+# Karpenter 설정 리소스 (NodePool, EC2NodeClass)
+#
+# Karpenter Controller가 설치된 후 이 리소스들이 적용되어야 합니다.
+# ArgoCD Sync Wave를 사용하여 순서를 제어합니다.
+# ============================================================================
+
+apiVersion: v2
+name: karpenter-config
+description: Karpenter NodePool and EC2NodeClass Configuration
+type: application
+version: 1.0.0
+appVersion: "1.0.0"

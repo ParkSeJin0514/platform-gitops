@@ -1,0 +1,48 @@
+# ============================================================================
+# platform-gitops/platform/karpenter-config/values.yaml
+# ============================================================================
+# Karpenter NodePool 및 EC2NodeClass 설정값
+# ============================================================================
+
+# 클러스터 정보
+clusterName: "petclinic-kr-eks"
+
+# EC2NodeClass 설정
+ec2NodeClass:
+  # Karpenter Node가 사용할 IAM Role (Terraform에서 생성)
+  roleName: "petclinic-kr-karpenter-node"
+  
+  # AMI 선택 (Amazon Linux 2023 - EKS 최적화)
+  amiFamily: "AL2023"
+  
+  # 블록 디바이스 설정
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        volumeSize: 50Gi
+        volumeType: gp3
+        iops: 3000
+        throughput: 125
+        encrypted: true
+        deleteOnTermination: true
+
+# NodePool 설정 - 일반 워크로드용
+nodePool:
+  general:
+    # 노드 수 제한
+    limits:
+      cpu: 100        # 최대 100 vCPU
+      memory: 200Gi   # 최대 200GB 메모리
+    
+    # 스케일링 설정
+    disruption:
+      # 노드 통합 정책
+      consolidationPolicy: WhenEmptyOrUnderutilized
+      # 통합 대기 시간 (너무 빠르면 불안정)
+      consolidateAfter: 1m
+      # 예산: 한 번에 최대 몇 %의 노드를 중단할 수 있는지
+      budgets:
+        - nodes: "20%"
+    
+    # 노드 만료 (선택적, 주기적 교체)
+    # expireAfter: 720h  # 30일

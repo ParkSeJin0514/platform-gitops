@@ -1,0 +1,34 @@
+# ============================================================================
+# platform-gitops/platform/external-secrets/values.yaml
+# ============================================================================
+# ⚠️ 아래 값들을 실제 환경에 맞게 수정하세요!
+# ============================================================================
+
+external-secrets:
+  installCRDs: true
+  
+  serviceAccount:
+    create: true
+    name: external-secrets-sa
+    annotations:
+      # ⚠️ 02-compute의 output에서 external_secrets_role_arn 값 사용
+      eks.amazonaws.com/role-arn: "arn:aws:iam::946775837287:role/petclinic-kr-external-secrets"
+  
+  webhook:
+    serviceAccount:
+      create: false
+      name: external-secrets-sa
+  
+  certController:
+    serviceAccount:
+      create: false
+      name: external-secrets-sa
+  
+  # 리소스 제한
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi

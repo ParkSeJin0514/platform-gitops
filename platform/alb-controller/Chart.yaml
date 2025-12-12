@@ -1,0 +1,14 @@
+# ============================================================================
+# platform-gitops/platform/alb-controller/Chart.yaml
+# ============================================================================
+apiVersion: v2
+name: alb-controller
+description: AWS Load Balancer Controller for EKS
+type: application
+version: 1.0.0
+appVersion: "2.7.1"
+
+dependencies:
+  - name: aws-load-balancer-controller
+    version: "1.8.1"
+    repository: "https://aws.github.io/eks-charts"

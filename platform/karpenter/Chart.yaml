@@ -1,0 +1,22 @@
+# ============================================================================
+# platform-gitops/platform/karpenter/Chart.yaml
+# ============================================================================
+# Karpenter Helm Chart Dependency
+# 
+# Karpenter는 Kubernetes 네이티브 노드 프로비저너로,
+# 워크로드 요구사항에 맞게 자동으로 노드를 생성/삭제합니다.
+#
+# 참고: https://karpenter.sh/
+# ============================================================================
+
+apiVersion: v2
+name: karpenter
+description: Karpenter - Kubernetes Node Autoprovisioner
+type: application
+version: 1.0.0
+appVersion: "1.1.1"
+
+dependencies:
+  - name: karpenter
+    version: "1.1.1"
+    repository: "oci://public.ecr.aws/karpenter"

@@ -1,0 +1,31 @@
+# ============================================================================
+# platform-gitops/apps/petclinic-app.yaml
+# ============================================================================
+# PetClinic Application 배포
+# ============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: petclinic
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: applications
+    app.kubernetes.io/managed-by: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    # ⚠️ 실제 petclinic-gitops Repository URL로 변경
+    repoURL: https://github.com/ParkSeJin0514/petclinic-gitops.git
+    targetRevision: main
+    path: "."
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: petclinic
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

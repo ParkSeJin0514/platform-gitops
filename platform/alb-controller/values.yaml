@@ -1,0 +1,35 @@
+# ============================================================================
+# platform-gitops/platform/alb-controller/values.yaml
+# ============================================================================
+# ⚠️ 아래 값들을 실제 환경에 맞게 수정하세요!
+# ============================================================================
+
+aws-load-balancer-controller:
+  # ⚠️ 실제 클러스터 이름으로 변경
+  clusterName: petclinic-kr-eks
+  
+  serviceAccount:
+    create: true
+    name: aws-load-balancer-controller
+    annotations:
+      # ⚠️ 02-compute의 output에서 alb_controller_role_arn 값 사용
+      eks.amazonaws.com/role-arn: "arn:aws:iam::946775837287:role/petclinic-kr-alb-controller"
+  
+  # ⚠️ 실제 리전으로 변경
+  region: ap-northeast-2
+  
+  # ⚠️ 실제 VPC ID로 변경
+  # vpcId: "vpc-0377744787fced6d8"
+  
+  # ECR 이미지 (ap-northeast-2용)
+  image:
+    repository: 602401143452.dkr.ecr.ap-northeast-2.amazonaws.com/amazon/aws-load-balancer-controller
+  
+  # 리소스 제한
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi

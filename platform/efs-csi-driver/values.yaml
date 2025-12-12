@@ -1,0 +1,28 @@
+# ============================================================================
+# platform-gitops/platform/efs-csi-driver/values.yaml
+# ============================================================================
+# ⚠️ 아래 값들을 실제 환경에 맞게 수정하세요!
+# ============================================================================
+
+aws-efs-csi-driver:
+  controller:
+    serviceAccount:
+      create: true
+      name: efs-csi-controller-sa
+      annotations:
+        # ⚠️ 02-compute의 output에서 efs_csi_driver_role_arn 값 사용
+        eks.amazonaws.com/role-arn: "arn:aws:iam::946775837287:role/petclinic-kr-efs-csi-driver"
+    
+    # 리소스 제한
+    resources:
+      limits:
+        cpu: 100m
+        memory: 128Mi
+      requests:
+        cpu: 50m
+        memory: 64Mi
+  
+  node:
+    serviceAccount:
+      create: false
+      name: efs-csi-controller-sa

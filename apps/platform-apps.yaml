@@ -1,0 +1,165 @@
+# ============================================================================
+# platform-gitops/apps/platform-apps.yaml
+# ============================================================================
+# Platform 컴포넌트들을 관리하는 ApplicationSet
+# Sync Wave를 사용하여 배포 순서 제어:
+#   Wave 1: ALB Controller, EFS CSI Driver, External Secrets (인프라)
+#   Wave 5: Karpenter Controller (노드 오토스케일러)
+#   Wave 6: Karpenter Config (NodePool, EC2NodeClass)
+#   Wave 10: ArgoCD Ingress (ALB Controller 설치 완료 후)
+# ============================================================================
+
+# ============================================================================
+# Wave 1: 인프라 컴포넌트 (먼저 배포)
+# ============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: platform-infra
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  generators:
+    - list:
+        elements:
+          - name: alb-controller
+            namespace: kube-system
+            path: platform/alb-controller
+          - name: efs-csi-driver
+            namespace: kube-system
+            path: platform/efs-csi-driver
+          - name: external-secrets
+            namespace: external-secrets
+            path: platform/external-secrets
+  template:
+    metadata:
+      name: '{{name}}'
+      namespace: argocd
+      labels:
+        app.kubernetes.io/part-of: platform
+        app.kubernetes.io/managed-by: argocd
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/ParkSeJin0514/platform-gitops.git
+        targetRevision: main
+        path: '{{path}}'
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: '{{namespace}}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+
+---
+# ============================================================================
+# Wave 5: Karpenter Controller
+# ============================================================================
+# 인프라 컴포넌트 설치 후 Karpenter Controller 배포
+# Karpenter는 kube-system 네임스페이스에 설치
+# ============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: karpenter
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+  labels:
+    app.kubernetes.io/part-of: platform
+    app.kubernetes.io/managed-by: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/ParkSeJin0514/platform-gitops.git
+    targetRevision: main
+    path: platform/karpenter
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+
+---
+# ============================================================================
+# Wave 6: Karpenter Config (NodePool, EC2NodeClass)
+# ============================================================================
+# Karpenter Controller가 Running 상태가 된 후 설정 리소스 배포
+# CRD가 등록된 후에만 NodePool, EC2NodeClass 생성 가능
+# ============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: karpenter-config
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+  labels:
+    app.kubernetes.io/part-of: platform
+    app.kubernetes.io/managed-by: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/ParkSeJin0514/platform-gitops.git
+    targetRevision: main
+    path: platform/karpenter-config
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
+
+---
+# ============================================================================
+# Wave 10: Ingress (ALB Controller 설치 완료 후 배포)
+# ============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: platform-ingress
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  generators:
+    - list:
+        elements:
+          - name: argocd-ingress
+            namespace: argocd
+            path: platform/argocd-ingress
+  template:
+    metadata:
+      name: '{{name}}'
+      namespace: argocd
+      labels:
+        app.kubernetes.io/part-of: platform
+        app.kubernetes.io/managed-by: argocd
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/ParkSeJin0514/platform-gitops.git
+        targetRevision: main
+        path: '{{path}}'
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: '{{namespace}}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
