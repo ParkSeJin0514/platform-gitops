@@ -15,6 +15,8 @@ metadata:
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
     alb.ingress.kubernetes.io/success-codes: '200'
     alb.ingress.kubernetes.io/tags: Environment=production,Project=argocd
+    # ✅ ALB → 클러스터 보안그룹 인바운드 규칙 자동 관리
+    alb.ingress.kubernetes.io/manage-backend-security-group-rules: "true"
 spec:
   ingressClassName: alb
   rules:
